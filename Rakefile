@@ -1,4 +1,6 @@
 require 'csv'
+require 'date'
+
 require 'dotenv'
 require 'selenium-webdriver'
 
@@ -20,7 +22,7 @@ prefs = {
 @home = 'https://lists.clir.org/cgi-bin/wa?HOME'
 @login = 'https://lists.clir.org/cgi-bin/wa?LOGON'
 @subscriber_report = 'https://lists.clir.org/cgi-bin/wa?REPORT=DLF-ANNOUNCE&z=2&9=A&9=B&9=I&9=N&X=P73C2C0B6936154BF97'
-@browser = Selenium::WebDriver.for(:chrome, prefs: prefs)
+
 
 task :all => [:clean, :login, :download_report] do
 
@@ -29,8 +31,20 @@ task :all => [:clean, :login, :download_report] do
 end
 
 task :clean do
-  `rm wa-report*`
+  `rm wa-report*download`
   # FileUtils.rm_f('wa-report*')
+end
+
+task :generate_stats do
+  aggregates = Hash.new(0)
+
+  CSV.foreach('dlf-announce.csv', headers: true) do |row|
+    year = Date.parse(row['Subscription Date']).year
+    aggregates[year] ? aggregates[year] += 1 : aggregates[year] = 0
+  end
+
+  puts aggregates.sort.to_h
+
 end
 
 task :download_report do
@@ -50,6 +64,7 @@ task :download_report do
 end
 
 task :login do
+  @browser = Selenium::WebDriver.for(:chrome, prefs: prefs)
   @browser.get(@login)
   user = @browser.find_element(name: 'Y')
   user.send_keys(USERNAME)
